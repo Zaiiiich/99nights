@@ -28,24 +28,6 @@ local activeTweens = {}
 local savedCFrame1 = CFrame.new(340.36, 9.44, -545.35)
 local savedCFrame2 = CFrame.new(-13.97, 28.62, 17.83)
 
---// Helper: parse CFrame string robustly
-local function parseCFrame(text)
-    if not text or text == "" then return nil end
-    local t = text:gsub("CFrame%.new", ""):gsub("[%(%)]", "")
-    local values = {}
-    for num in string.gmatch(t, "[-+]?%d+%.?%d*[eE]?[-+]?%d*") do
-        local n = tonumber(num)
-        if n then table.insert(values, n) end
-    end
-    if #values == 3 then
-        return CFrame.new(values[1], values[2], values[3])
-    elseif #values == 12 then
-        return CFrame.new(unpack(values))
-    else
-        return nil
-    end
-end
-
 --// GUI Setup
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoToolsPanel"
@@ -56,31 +38,34 @@ local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 260, 0, 300)
 frame.Position = UDim2.new(0.5, -130, 0.5, -150)
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-frame.BackgroundTransparency = 0.12
+frame.BackgroundColor3 = Color3.fromRGB(222, 184, 135)
+frame.BackgroundTransparency = 0.08
 frame.Parent = screenGui
 
 -- Title bar
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1, 0, 0, 30)
 title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundTransparency = 1 -- no grey background
+title.BackgroundTransparency = 1
 title.Text = "Auto Longrun - Zai"
-title.TextColor3 = Color3.fromRGB(0, 200, 255)
+title.TextColor3 = Color3.fromRGB(160, 82, 45)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
-title.TextXAlignment = Enum.TextXAlignment.Center -- centered
+title.TextXAlignment = Enum.TextXAlignment.Center
 
--- Minimize button (right corner, transparent background)
+-- Minimize button (right corner, black)
 local minimizeButton = Instance.new("TextButton", frame)
 minimizeButton.Size = UDim2.new(0, 28, 0, 24)
 minimizeButton.Position = UDim2.new(1, -6, 0, 3)
 minimizeButton.AnchorPoint = Vector2.new(1, 0)
-minimizeButton.BackgroundTransparency = 1
+minimizeButton.BackgroundTransparency = 0
+minimizeButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
 minimizeButton.Text = "-"
 minimizeButton.Font = Enum.Font.GothamBold
-minimizeButton.TextColor3 = Color3.fromRGB(0, 200, 255) -- cyan like title
+minimizeButton.TextColor3 = Color3.fromRGB(255,255,255)
 minimizeButton.TextSize = 18
+local minimizeCorner = Instance.new("UICorner", minimizeButton)
+minimizeCorner.CornerRadius = UDim.new(0.5, 0)
 
 -- Scroll area
 local scroll = Instance.new("ScrollingFrame", frame)
@@ -101,7 +86,7 @@ local function makeLabel(text)
     lbl.Size = UDim2.new(1, -20, 0, 20)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
-    lbl.TextColor3 = Color3.fromRGB(255,255,255)
+    lbl.TextColor3 = Color3.fromRGB(139, 69, 19)
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 14
     lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -113,59 +98,73 @@ end
 local function makeButton(labelText)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 120, 0, 26)
-    btn.BackgroundColor3 = Color3.fromRGB(70,130,180)
+    btn.BackgroundColor3 = Color3.fromRGB(245, 222, 179)
     btn.Text = labelText
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 13
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.TextColor3 = Color3.fromRGB(160, 82, 45)
     btn.Parent = scroll
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0.5, 0)
     return btn
-end
-
-local function makeTextBox(place)
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, -20, 0, 28)
-    box.PlaceholderText = place
-    box.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    box.TextColor3 = Color3.fromRGB(255,255,255)
-    box.Font = Enum.Font.Code
-    box.TextSize = 12
-    box.ClearTextOnFocus = false
-    box.Parent = scroll
-    return box
 end
 
 -- Build UI contents
 local skipLabel = makeLabel("Auto Skip Night")
+skipLabel.TextSize = 15
+
+local skipHint = Instance.new("TextLabel")
+skipHint.Size = UDim2.new(1, -20, 0, 16)
+skipHint.BackgroundTransparency = 1
+skipHint.Text = "(Press Start at 1:14 during the night)"
+skipHint.TextColor3 = Color3.fromRGB(160,82,45)
+skipHint.Font = Enum.Font.Gotham
+skipHint.TextSize = 12
+skipHint.TextXAlignment = Enum.TextXAlignment.Left
+skipHint.Parent = scroll
+
 local skipBtn = makeButton("Start")
 local skipTimer = makeLabel("Timer: OFF")
-skipTimer.TextColor3 = Color3.fromRGB(200,200,200)
+skipTimer.TextColor3 = Color3.fromRGB(160,82,45)
 
 local shLabel = makeLabel("Auto Stronghold")
+shLabel.TextSize = 15
+
+local shHint = Instance.new("TextLabel")
+shHint.Size = UDim2.new(1, -20, 0, 16)
+shHint.BackgroundTransparency = 1
+shHint.Text = "(Set the Location first)"
+shHint.TextColor3 = Color3.fromRGB(160,82,45)
+shHint.Font = Enum.Font.Gotham
+shHint.TextSize = 12
+shHint.TextXAlignment = Enum.TextXAlignment.Left
+shHint.Parent = scroll
+
 local shBtn = makeButton("Start")
 local shTimer = makeLabel("Timer: OFF")
-shTimer.TextColor3 = Color3.fromRGB(200,200,200)
+shTimer.TextColor3 = Color3.fromRGB(160,82,45)
 
--- Saved CFrames UI
 local cf1Label = makeLabel("Stronghold Door")
-local cframeBox1 = makeTextBox("Enter CFrame1 values")
-local saveC1Btn = makeButton("Save Location")
-local copyToC1 = makeButton("Set Location")
+local setC1Btn = makeButton("Set Location")
 
 local cf2Label = makeLabel("Campfire")
-local cframeBox2 = makeTextBox("Enter CFrame2 values")
-local saveC2Btn = makeButton("Save Location")
-local copyToC2 = makeButton("Set Location")
+local setC2Btn = makeButton("Set Location")
 
--- Restore button (bottom-right)
+-- Restore button (centered, circular beige button with "Start" text)
 local restoreButton = Instance.new("TextButton", screenGui)
-restoreButton.Size = UDim2.new(0, 120, 0, 38)
-restoreButton.Position = UDim2.new(1, -130, 1, -60)
-restoreButton.AnchorPoint = Vector2.new(0, 0)
-restoreButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
-restoreButton.Text = "Restore"
-restoreButton.TextColor3 = Color3.fromRGB(255,255,255)
+restoreButton.Size = UDim2.new(0, 64, 0, 64)
+restoreButton.Position = UDim2.new(0.5, 0, 0.5, 0)
+restoreButton.AnchorPoint = Vector2.new(0.5, 0.5)
+restoreButton.BackgroundColor3 = Color3.fromRGB(245, 222, 179)
+restoreButton.BackgroundTransparency = 0
+restoreButton.Text = "Start"
+restoreButton.TextColor3 = Color3.fromRGB(139, 69, 19)
+restoreButton.Font = Enum.Font.GothamBold
+restoreButton.TextSize = 20
 restoreButton.Visible = false
+restoreButton.ClipsDescendants = true
+local restoreUICorner = Instance.new("UICorner", restoreButton)
+restoreUICorner.CornerRadius = UDim.new(1, 0)
 
 -- Auto-fit scroll
 local function updateCanvas()
@@ -219,12 +218,7 @@ local function runSH()
     if shRunning or shPaused then return end
     shRunning = true
     shTimer.Text = "Running..."
-    shTimer.TextColor3 = Color3.fromRGB(0,255,0)
-
-    local parsed1 = parseCFrame(cframeBox1.Text)
-    if parsed1 then savedCFrame1 = parsed1 end
-    local parsed2 = parseCFrame(cframeBox2.Text)
-    if parsed2 then savedCFrame2 = parsed2 end
+    shTimer.TextColor3 = Color3.fromRGB(34,139,34)
 
     task.wait(0.8)
     if shPaused then shRunning = false shTimer.Text = "Timer: OFF" return end
@@ -269,10 +263,9 @@ task.spawn(function()
             pcall(function() remoteEvent:FireServer(target) end)
             local countdown = skipLoopTime
             while countdown > 0 and not skipPaused do
-                skipTimer.Text = "Timer: " .. string.format("%02d:%02d", math.floor(countdown/60), countdown%60)
-                skipTimer.TextColor3 = Color3.fromRGB(255,255,255) -- "Timer:" white
                 skipTimer.RichText = true
-                skipTimer.Text = "Timer: <font color='rgb(0,255,0)'>" .. string.format("%02d:%02d", math.floor(countdown/60), countdown%60) .. "</font>"
+                skipTimer.Text = "Cooldown: <font color='rgb(34,139,34)'>" .. string.format("%02d:%02d", math.floor(countdown/60), countdown%60) .. "</font>"
+                skipTimer.TextColor3 = Color3.fromRGB(160,82,45)
                 task.wait(1)
                 countdown -= 1
             end
@@ -290,14 +283,14 @@ task.spawn(function()
             local countdown = shCooldown
             while countdown > 0 and not shPaused do
                 shTimer.RichText = true
-                shTimer.Text = "Cooldown: <font color='rgb(0,255,0)'>" .. string.format("%02d:%02d", math.floor(countdown/60), countdown%60) .. "</font>"
-                shTimer.TextColor3 = Color3.fromRGB(255,255,255) -- label part white
+                shTimer.Text = "Cooldown: <font color='rgb(34,139,34)'>" .. string.format("%02d:%02d", math.floor(countdown/60), countdown%60) .. "</font>"
+                shTimer.TextColor3 = Color3.fromRGB(160,82,45)
                 task.wait(1)
                 countdown -= 1
             end
             if countdown <= 0 and not shPaused then
                 shTimer.Text = "Ready to run!"
-                shTimer.TextColor3 = Color3.fromRGB(0,255,0)
+                shTimer.TextColor3 = Color3.fromRGB(34,139,34)
                 task.wait(0.5)
             end
         else
@@ -311,66 +304,39 @@ skipBtn.MouseButton1Click:Connect(function()
     skipPaused = not skipPaused
     skipBtn.Text = skipPaused and "Start" or "Pause"
     skipTimer.Text = skipPaused and "Timer: OFF" or "Running..."
-    skipTimer.TextColor3 = skipPaused and Color3.fromRGB(200,200,200) or Color3.fromRGB(0,255,0)
+    skipTimer.TextColor3 = skipPaused and Color3.fromRGB(160,82,45) or Color3.fromRGB(34,139,34)
 end)
 
 shBtn.MouseButton1Click:Connect(function()
     shPaused = not shPaused
     shBtn.Text = shPaused and "Start" or "Pause"
     shTimer.Text = shPaused and "Timer: OFF" or "Running..."
-    shTimer.TextColor3 = shPaused and Color3.fromRGB(200,200,200) or Color3.fromRGB(0,255,0)
+    shTimer.TextColor3 = shPaused and Color3.fromRGB(160,82,45) or Color3.fromRGB(34,139,34)
     if shPaused then
         stopTweens()
         shRunning = false
     end
 end)
 
-saveC1Btn.MouseButton1Click:Connect(function()
-    local cf = parseCFrame(cframeBox1.Text)
-    if cf then
-        savedCFrame1 = cf
-        cframeBox1.Text = "CFrame1 saved!"
-        task.delay(1.2, function() cframeBox1.Text = "" end)
-    else
-        cframeBox1.Text = "Invalid!"
-        task.delay(1.2, function() cframeBox1.Text = "" end)
-    end
-end)
-
-saveC2Btn.MouseButton1Click:Connect(function()
-    local cf = parseCFrame(cframeBox2.Text)
-    if cf then
-        savedCFrame2 = cf
-        cframeBox2.Text = "CFrame2 saved!"
-        task.delay(1.2, function() cframeBox2.Text = "" end)
-    else
-        cframeBox2.Text = "Invalid!"
-        task.delay(1.2, function() cframeBox2.Text = "" end)
-    end
-end)
-
--- Copy buttons auto-save + insert
-copyToC1.MouseButton1Click:Connect(function()
+setC1Btn.MouseButton1Click:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         local cf = player.Character.HumanoidRootPart.CFrame
         savedCFrame1 = cf
-        cframeBox1.Text = tostring(cf)
-        copyToC1.Text = "Copied & Saved ✓"
-        task.delay(1.5, function() copyToC1.Text = "Copy → CFrame1" end)
+        setC1Btn.Text = "Set ✓"
+        task.delay(1.5, function() setC1Btn.Text = "Set Location" end)
     end
 end)
 
-copyToC2.MouseButton1Click:Connect(function()
+setC2Btn.MouseButton1Click:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         local cf = player.Character.HumanoidRootPart.CFrame
         savedCFrame2 = cf
-        cframeBox2.Text = tostring(cf)
-        copyToC2.Text = "Copied & Saved ✓"
-        task.delay(1.5, function() copyToC2.Text = "Copy → CFrame2" end)
+        setC2Btn.Text = "Set ✓"
+        task.delay(1.5, function() setC2Btn.Text = "Set Location" end)
     end
 end)
 
--- Minimize / Restore
+-- Minimize / Restore (center restore button)
 minimizeButton.MouseButton1Click:Connect(function()
     frame.Visible = false
     restoreButton.Visible = true
